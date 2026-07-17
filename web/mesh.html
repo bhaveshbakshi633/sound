@@ -128,6 +128,14 @@ const FS = 48000;
 
 let M = null, ctx = null, room = '', nick = '', myId = 0;
 let busyFloor = 0, busyNow = 0, txBusy = false;
+
+// Transmit amplitude. LOUDER IS WORSE, and this is not a guess: on the reference machine a
+// capture peak near 0.89 decodes and a peak pinned at 1.00 fails outright, because the
+// speaker and the microphone are centimetres apart and a loud burst saturates the mic.
+// modulate() already returns ~0.7; this scales it to the level measured to work
+// (0.14–0.28 all decoded equally, so the exact value is not delicate — the ceiling is).
+// Raising this to "make it louder" will break reception, not improve it.
+const TX_GAIN = 0.2;
 const inflight = new Map();
 
 // ── app-layer frame carried inside the DSP payload ──────────────────────────
@@ -211,6 +219,7 @@ async function transmit(text) {
   }
 
   const burst = modulate(bytes);
+  for (let i = 0; i < burst.length; i++) burst[i] *= TX_GAIN;
   const el = row('me', text, `playing ${(burst.length/FS).toFixed(2)}s…`);
   el.classList.add('pending');
   inflight.set(text, { el, at: performance.now() });
