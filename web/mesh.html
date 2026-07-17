@@ -3,7 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>uchat mesh — 18–20 kHz</title>
+<title>sound — chat that travels as air</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0e1116">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
   :root {
     --bg:#0e1116; --panel:#161b22; --line:#262d38; --fg:#e6edf3; --dim:#8b949e;
@@ -92,7 +97,8 @@
      Most adults can't hear 19 kHz — but children and dogs can, and it is not silent.
   </p>
   <div id="gateerr" class="err"></div>
-  <p style="margin-top:18px;font-size:11px">
+  <p id="offready" style="margin-top:16px;font-size:11px;color:var(--dim)"></p>
+  <p style="margin-top:10px;font-size:11px">
     <a href="https://github.com/bhaveshbakshi633/sound" style="color:var(--dim)">source &amp; benchmarks</a>
   </p>
 </div>
@@ -346,6 +352,24 @@ function onFrame(bytes) {
     return;
   }
   row('them', f.text, `${f.nick} · over air · purity ${M._uc_last_score().toFixed(2)}`);
+}
+
+// Cache everything on first load so the network is never needed again. This is not an
+// optimisation: once the page is here, air is the only transport, and the app should keep
+// working with WiFi off. Failure to register is non-fatal — the app still runs online.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(() => {
+    const el = $('offready');
+    if (el) el.textContent = navigator.serviceWorker.controller
+      ? 'saved for offline — you can turn the internet off'
+      : 'saving for offline…';
+    navigator.serviceWorker.ready.then(() => {
+      if (el) el.textContent = 'saved for offline — you can turn the internet off';
+    });
+  }).catch(() => {
+    const el = $('offready');
+    if (el) el.textContent = '';   // no offline support here; the app still works online
+  });
 }
 
 $('join').onclick = join;

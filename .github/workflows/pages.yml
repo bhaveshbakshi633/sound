@@ -55,6 +55,7 @@ jobs:
           mkdir -p _site
           cp web/mesh.html _site/index.html
           cp web/uchat.js web/uchat.wasm _site/
+          cp web/sw.js web/manifest.json web/icon.svg _site/
           cp README.md BENCHMARKS.md _site/
           ls -l _site
 
