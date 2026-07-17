@@ -23,18 +23,25 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  EMSDK_VERSION: 3.1.74
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      # Pinned, not `latest`. `latest` once silently shipped a page that had never been
+      # run: newer emscripten stopped attaching HEAPF32/HEAPU8 to the Module, the local
+      # toolchain still did, and the artifact that got published was not the artifact that
+      # got tested. A moving toolchain means the thing you verify is not the thing you ship.
       - name: Install emscripten
         run: |
-          git clone --depth 1 https://github.com/emscripten-core/emsdk.git ~/emsdk
+          git clone https://github.com/emscripten-core/emsdk.git ~/emsdk
           cd ~/emsdk
-          ./emsdk install latest
-          ./emsdk activate latest
+          ./emsdk install ${{ env.EMSDK_VERSION }}
+          ./emsdk activate ${{ env.EMSDK_VERSION }}
           echo "$HOME/emsdk/upstream/emscripten" >> "$GITHUB_PATH"
 
       - name: Build WASM
@@ -45,6 +52,12 @@ jobs:
 
       # The DSP is the thing worth publishing correctly, so prove it still works before
       # shipping it. This runs the same suite as a developer's `make selftest`.
+      # Runs against the artifact THIS job just built, not a local one. That is the whole
+      # point: the failure being guarded here only appears on toolchains that do not
+      # auto-export the heap views, so a local pass is meaningless.
+      - name: Check the built WASM exports everything the page uses
+        run: node tools/check-wasm.js web/uchat.js web/uchat.wasm
+
       - name: Run DSP self-test
         run: |
           make selftest

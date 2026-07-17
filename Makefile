@@ -35,7 +35,7 @@ selftest: LDLIBS+=-lpthread
 EMCC ?= emcc
 EMFLAGS := -O3 -std=c++17 \
   -s EXPORTED_FUNCTIONS='["_uc_modulate","_uc_push","_uc_pop","_uc_last_score","_uc_band_energy","_uc_sample_rate","_uc_max_payload","_uc_n_tones","_uc_tone_hz","_malloc","_free"]' \
-  -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","getValue","UTF8ToString","stringToUTF8"]' \
+  -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","getValue","UTF8ToString","stringToUTF8","HEAPF32","HEAPU8","HEAP32"]' \
   -s ALLOW_MEMORY_GROWTH=1 -s MODULARIZE=1 -s EXPORT_NAME=UChatDSP \
   -s ENVIRONMENT=web,worker,node
 
