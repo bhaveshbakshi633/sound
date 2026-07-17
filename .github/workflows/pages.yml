@@ -1,0 +1,73 @@
+name: Deploy to Pages
+
+# The published page is built from source on every push. The WASM is deliberately NOT
+# committed: it is a build artifact, and a committed artifact goes stale the moment someone
+# edits dsp.cpp and forgets to rebuild — the page would then run different DSP from the
+# repository it claims to be.
+#
+# GitHub Pages serves over HTTPS with a real certificate, which is the whole point: browsers
+# only grant getUserMedia in a secure context, so a self-signed cert means fighting a warning
+# on every phone. Here there is nothing to fight.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install emscripten
+        run: |
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git ~/emsdk
+          cd ~/emsdk
+          ./emsdk install latest
+          ./emsdk activate latest
+          echo "$HOME/emsdk/upstream/emscripten" >> "$GITHUB_PATH"
+
+      - name: Build WASM
+        run: |
+          emcc --version | head -1
+          make wasm
+          ls -l web/uchat.js web/uchat.wasm
+
+      # The DSP is the thing worth publishing correctly, so prove it still works before
+      # shipping it. This runs the same suite as a developer's `make selftest`.
+      - name: Run DSP self-test
+        run: |
+          make selftest
+          ./selftest
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp web/mesh.html _site/index.html
+          cp web/uchat.js web/uchat.wasm _site/
+          cp README.md BENCHMARKS.md _site/
+          ls -l _site
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

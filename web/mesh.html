@@ -78,13 +78,23 @@
 <body>
 
 <div id="gate">
-  <h2>uchat mesh</h2>
-  <p>Messages travel between devices as sound at 18–20 kHz. Nothing goes over the network —
-     the page is served over WiFi, but every message crosses the air.</p>
+  <h2>chat that travels as sound</h2>
+  <p>Your message is turned into tones between 18 and 20 kHz, played out of this device's
+     speaker, and picked up by any device listening nearby. <b>Nothing is sent over the
+     network.</b> Once this page has loaded, the only thing carrying your words is air.</p>
+  <p>Open it on a second device in the same room and the same room name to see it work.
+     On one device you'll hear your own message come back to you.</p>
   <input id="room" placeholder="room name" value="general" autocomplete="off">
   <input id="nick" placeholder="your name" autocomplete="off">
   <button id="join">Join — allow microphone</button>
+  <p style="margin:14px 0 0;font-size:12px">
+     Turn the volume up. It only works out loud.<br>
+     Most adults can't hear 19 kHz — but children and dogs can, and it is not silent.
+  </p>
   <div id="gateerr" class="err"></div>
+  <p style="margin-top:18px;font-size:11px">
+    <a href="https://github.com/bhaveshbakshi633/sound" style="color:var(--dim)">source &amp; benchmarks</a>
+  </p>
 </div>
 
 <header hidden id="hdr">
