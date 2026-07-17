@@ -1,0 +1,19 @@
+# TLS material. certs/key.pem is a private key — it must never leave this machine.
+certs/
+
+# Run logs from this host
+logs/
+
+# Build output
+*.o
+/uchat
+/tool
+/selftest
+
+# Emscripten output — build artifacts, not source. `make wasm` regenerates them.
+web/uchat.js
+web/uchat.wasm
+
+# Scratch
+*.wav
+*.f32

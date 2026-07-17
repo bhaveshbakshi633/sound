@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>uchat — 18–20 kHz acoustic chat</title>
+<style>
+  :root {
+    --bg:#0e1116; --panel:#161b22; --line:#262d38; --fg:#e6edf3; --dim:#8b949e;
+    --tx:#1f6feb; --rx:#2ea043; --warn:#d29922; --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f6f8fa; --panel:#fff; --line:#d8dee4; --fg:#1f2328; --dim:#636c76; }
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; height:100vh; display:flex; flex-direction:column;
+    background:var(--bg); color:var(--fg);
+    font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;
+  }
+  header {
+    padding:14px 18px; border-bottom:1px solid var(--line); background:var(--panel);
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  }
+  h1 { margin:0; font-size:16px; font-weight:650; letter-spacing:-.01em; }
+  .spec { font:12px/1 var(--mono); color:var(--dim); }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--dim); flex:none; }
+  .dot.live { background:var(--rx); box-shadow:0 0 0 3px color-mix(in srgb,var(--rx) 25%,transparent); }
+  .dot.dead { background:#f85149; }
+  #status { font:12px/1 var(--mono); color:var(--dim); margin-left:auto; display:flex;
+            align-items:center; gap:7px; }
+
+  #log { flex:1; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:10px; }
+  .row { display:flex; flex-direction:column; max-width:min(640px,88%); }
+  .row.tx { align-self:flex-end; align-items:flex-end; }
+  .row.rx { align-self:flex-start; align-items:flex-start; }
+  .row.sys { align-self:center; max-width:100%; }
+  .bub {
+    padding:9px 13px; border-radius:14px; word-break:break-word; white-space:pre-wrap;
+    border:1px solid var(--line);
+  }
+  .tx .bub { background:var(--tx); border-color:var(--tx); color:#fff; border-bottom-right-radius:4px; }
+  .rx .bub { background:var(--panel); border-bottom-left-radius:4px; }
+  .sys .bub { background:transparent; border:none; color:var(--dim); font:12px/1.5 var(--mono);
+              text-align:center; padding:2px; }
+  .meta { font:11px/1 var(--mono); color:var(--dim); margin-top:5px; }
+  .pending { opacity:.55; }
+  .lost .bub { background:transparent; border:1px dashed #f85149; color:var(--fg); }
+  .lost .meta { color:#f85149; }
+
+  footer { border-top:1px solid var(--line); background:var(--panel); padding:12px 14px; }
+  form { display:flex; gap:10px; }
+  input {
+    flex:1; padding:11px 14px; border-radius:9px; border:1px solid var(--line);
+    background:var(--bg); color:var(--fg); font:15px system-ui,sans-serif; outline:none;
+  }
+  input:focus { border-color:var(--tx); }
+  button {
+    padding:0 20px; border:0; border-radius:9px; background:var(--tx); color:#fff;
+    font-weight:600; cursor:pointer;
+  }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .hint { font:11px/1.4 var(--mono); color:var(--dim); margin-top:8px; }
+  kbd { font:inherit; border:1px solid var(--line); border-radius:4px; padding:0 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="dot" id="dot"></span>
+  <h1>uchat</h1>
+  <span class="spec">18250–20000 Hz &middot; 8-FSK &middot; 150 bps &middot; speaker → air → mic</span>
+  <span id="status">connecting…</span>
+</header>
+
+<div id="log">
+  <div class="row sys"><div class="bub">Type a message. It is modulated to 18–20 kHz, played
+  out the speaker, picked up by the microphone, and decoded back. Nothing is sent over the
+  network — the only path between the two bubbles is air.</div></div>
+</div>
+
+<footer>
+  <form id="f">
+    <input id="i" autocomplete="off" maxlength="200" placeholder="message…" autofocus>
+    <button id="b" type="submit">Send</button>
+  </form>
+  <div class="hint">Keep the volume up. <kbd>Blue</kbd> = transmitted as sound &middot;
+    <kbd>Green</kbd> = decoded back from the microphone. A green bubble is proof the audio
+    actually made the round trip.</div>
+</footer>
+
+<script>
+const log = document.getElementById('log');
+const dot = document.getElementById('dot');
+const statusEl = document.getElementById('status');
+const form = document.getElementById('f');
+const input = document.getElementById('i');
+const btn = document.getElementById('b');
+
+// Bubbles awaiting a round trip, keyed by message text. Keyed rather than "the last one"
+// because the server matches returns by text too — with more than one burst in flight,
+// "the last one" is a guess, and a guess here silently attributes a decode to the wrong
+// message.
+const inflight = new Map();
+
+function atBottom() { return log.scrollHeight - log.scrollTop - log.clientHeight < 80; }
+function row(cls, text, meta) {
+  const stick = atBottom();
+  const r = document.createElement('div'); r.className = 'row ' + cls;
+  const b = document.createElement('div'); b.className = 'bub'; b.textContent = text;
+  r.appendChild(b);
+  if (meta) { const m = document.createElement('div'); m.className = 'meta'; m.textContent = meta; r.appendChild(m); }
+  log.appendChild(r);
+  if (stick) log.scrollTop = log.scrollHeight;
+  return r;
+}
+
+const es = new EventSource('/events');
+es.onopen = () => { dot.className = 'dot live'; statusEl.textContent = 'mic live · decoding'; };
+es.onerror = () => { dot.className = 'dot dead'; statusEl.textContent = 'disconnected — is uchat running?'; };
+es.onmessage = (e) => {
+  const m = JSON.parse(e.data);
+
+  if (m.type === 'tx') {
+    const el = row('tx', m.text, `playing ${m.dur.toFixed(2)}s of 18–20 kHz…`);
+    el.classList.add('pending');
+    inflight.set(m.text, { el, at: performance.now() });
+
+  } else if (m.type === 'rx') {
+    const p = inflight.get(m.text);
+    let ms = null;
+    if (p) {
+      ms = Math.round(performance.now() - p.at);
+      p.el.classList.remove('pending');
+      p.el.querySelector('.meta').textContent = 'transmitted';
+      inflight.delete(m.text);
+    }
+    row('rx', m.text, `decoded from mic · tone purity ${m.score.toFixed(2)}` +
+                      (ms !== null ? ` · ${ms} ms round trip` : ''));
+
+  } else if (m.type === 'timeout') {
+    // The message went out and never came back. Say so. A bubble left sitting on
+    // "playing…" forever is a silent failure pretending to be work in progress.
+    const p = inflight.get(m.text);
+    if (p) {
+      p.el.classList.remove('pending');
+      p.el.classList.add('lost');
+      p.el.querySelector('.meta').textContent = 'lost — never decoded back';
+      inflight.delete(m.text);
+    }
+    row('sys', `"${m.text}" was transmitted but never decoded back. ` +
+               `~4% of frames are lost; send it again.`);
+  }
+};
+
+form.onsubmit = async (e) => {
+  e.preventDefault();
+  const t = input.value.trim();
+  if (!t) return;
+  input.value = '';
+  btn.disabled = true;
+  try {
+    await fetch('/send', { method: 'POST', body: t });
+  } catch (err) {
+    row('sys', 'send failed: ' + err.message);
+  }
+  btn.disabled = false;
+  input.focus();
+};
+</script>
+</body>
+</html>
