@@ -45,3 +45,18 @@ web/uchat.js: src/wasm.cpp src/dsp.cpp src/rs.cpp src/dsp.h src/rs.h
 	$(EMCC) $(EMFLAGS) src/wasm.cpp src/dsp.cpp src/rs.cpp -o $@
 
 .PHONY: wasm
+
+# ── tests ─────────────────────────────────────────────────────────────────────
+# `make test` needs only a C++ toolchain + node: it runs the DSP self-test and the headless
+# byte-loopback that drives the exact WASM the browser loads. `make test-browser` also needs
+# Playwright (`npm install && npx playwright install chromium`) and runs the full page in
+# real Chromium with a fake ultrasonic microphone. Neither can reproduce real speaker→air→mic
+# acoustics — that is the on-device test only a phone in a room can do.
+test: selftest wasm
+	./selftest
+	node tests/dsp-loopback.cjs
+
+test-browser: wasm
+	node tests/browser.mjs
+
+.PHONY: test test-browser

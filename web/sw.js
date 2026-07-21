@@ -10,16 +10,25 @@
 // the whole point is that you are not supposed to need the network. Updates are picked up
 // in the background on the next load that does happen to have connectivity.
 
-const CACHE = 'uchat-v1';
+const CACHE = 'uchat-v2';
 
 // Everything required to run. If any of these is missing the app is dead, so the install
 // deliberately fails rather than half-caching and pretending to be offline-ready.
+//
+// This list is the mesh app's whole dependency closure. v1 cached index.html (the
+// native-host page) but NOT mesh.html — the very page that registers this worker — so the
+// browser mesh silently failed to load offline. It also missed the AudioWorklet module,
+// without which capture cannot start. Both are here now; bumping the cache name forces the
+// re-cache on the next load with a network.
 const ASSETS = [
   './',
   './index.html',
+  './mesh.html',
   './uchat.js',
   './uchat.wasm',
+  './capture-worklet.js',
   './manifest.json',
+  './icon.svg',
 ];
 
 self.addEventListener('install', e => {

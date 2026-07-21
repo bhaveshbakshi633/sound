@@ -1,0 +1,23 @@
+{
+  "name": "uchat-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Test harnesses for the uchat web app: headless DSP byte-loopback (node) + Playwright browser E2E. The app itself is C++/WASM — see the Makefile.",
+  "type": "commonjs",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test:dsp": "node tests/dsp-loopback.cjs",
+    "test:browser": "node tests/browser.mjs",
+    "test": "npm run test:dsp && npm run test:browser"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bhaveshbakshi633/sound.git"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "playwright": "^1.61.1"
+  }
+}

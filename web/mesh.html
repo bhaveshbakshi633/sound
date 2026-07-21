@@ -31,26 +31,41 @@
   h1 { margin:0; font-size:15px; font-weight:650; }
   .spec { font:11px/1 var(--mono); color:var(--dim); }
   .dot { width:8px; height:8px; border-radius:50%; background:var(--dim); flex:none; }
-  .dot.live { background:var(--rx); box-shadow:0 0 0 3px color-mix(in srgb,var(--rx) 25%,transparent); }
-  .dot.busy { background:var(--warn); box-shadow:0 0 0 3px color-mix(in srgb,var(--warn) 25%,transparent); }
-  .dot.dead { background:var(--bad); }
+  .dot.live   { background:var(--rx);   box-shadow:0 0 0 3px color-mix(in srgb,var(--rx) 25%,transparent); }
+  .dot.busy   { background:var(--warn); box-shadow:0 0 0 3px color-mix(in srgb,var(--warn) 25%,transparent); }
+  .dot.paused { background:var(--dim); }
+  .dot.dead   { background:var(--bad); }
   #status { font:11px/1 var(--mono); color:var(--dim); margin-left:auto; }
+
+  /* Header tools — export / clear the activity log. Icon buttons, but each carries an
+     aria-label so a screen reader announces the action, not a glyph. */
+  .tools { display:flex; gap:6px; }
+  .tool {
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:34px; height:34px; padding:0 9px; border:1px solid var(--line);
+    border-radius:8px; background:var(--bg); color:var(--fg); cursor:pointer;
+    font:12px/1 var(--mono);
+  }
+  .tool:hover { border-color:var(--dim); }
+  .tool:disabled { opacity:.4; cursor:not-allowed; }
 
   #gate { margin:auto; padding:24px; max-width:420px; text-align:center; }
   #gate h2 { margin:0 0 6px; font-size:18px; }
   #gate p { color:var(--dim); font-size:13px; margin:0 0 18px; }
+  #gate label { display:block; text-align:left; font:11px/1.6 var(--mono); color:var(--dim); }
   #gate input {
     width:100%; padding:12px 14px; margin-bottom:10px; border-radius:9px;
     border:1px solid var(--line); background:var(--bg); color:var(--fg); font-size:16px;
   }
   #gate button {
-    width:100%; padding:13px; border:0; border-radius:9px; background:var(--tx);
-    color:#fff; font-size:16px; font-weight:600; cursor:pointer;
+    width:100%; padding:14px; border:0; border-radius:9px; background:var(--tx);
+    color:#fff; font-size:16px; font-weight:600; cursor:pointer; min-height:48px;
   }
   .err { color:var(--bad); font:12px/1.5 var(--mono); margin-top:14px; text-align:left;
          white-space:pre-wrap; }
 
-  #log { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:8px; }
+  #log { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:8px;
+         overscroll-behavior:contain; }
   .row { display:flex; flex-direction:column; max-width:min(560px,88%); }
   .row.me  { align-self:flex-end; align-items:flex-end; }
   .row.them{ align-self:flex-start; align-items:flex-start; }
@@ -65,19 +80,29 @@
   .pending { opacity:.5; }
   .lost .bub { background:transparent; border:1px dashed var(--bad); color:var(--fg); }
   .lost .meta { color:var(--bad); }
+  .divider { align-self:center; font:10px/1 var(--mono); color:var(--dim);
+             padding:6px 0; opacity:.7; }
 
   footer { border-top:1px solid var(--line); background:var(--panel);
            padding:10px 12px env(safe-area-inset-bottom); }
   form { display:flex; gap:8px; }
-  input#i { flex:1; padding:11px 14px; border-radius:9px; border:1px solid var(--line);
-            background:var(--bg); color:var(--fg); font-size:16px; outline:none; }
+  input#i { flex:1; padding:12px 14px; border-radius:9px; border:1px solid var(--line);
+            background:var(--bg); color:var(--fg); font-size:16px; outline:none; min-height:44px; }
   input#i:focus { border-color:var(--tx); }
   button#b { padding:0 18px; border:0; border-radius:9px; background:var(--tx); color:#fff;
-             font-weight:600; cursor:pointer; }
+             font-weight:600; cursor:pointer; min-width:64px; min-height:44px; }
   button#b:disabled { opacity:.4; }
   .hint { font:10px/1.4 var(--mono); color:var(--dim); margin-top:6px; }
   #meter { height:3px; background:var(--line); border-radius:2px; margin-top:6px; overflow:hidden; }
   #meterfill { height:100%; width:0%; background:var(--rx); transition:width .08s linear; }
+
+  /* Keyboard users must be able to SEE where focus is. */
+  :focus-visible { outline:2px solid var(--tx); outline-offset:2px; }
+  /* Respect users who ask the OS for less motion. */
+  @media (prefers-reduced-motion: reduce) {
+    #meterfill { transition:none; }
+    .dot { box-shadow:none !important; }
+  }
 </style>
 </head>
 <body>
@@ -89,35 +114,47 @@
      network.</b> Once this page has loaded, the only thing carrying your words is air.</p>
   <p>Open it on a second device in the same room and the same room name to see it work.
      On one device you'll hear your own message come back to you.</p>
-  <input id="room" placeholder="room name" value="general" autocomplete="off">
-  <input id="nick" placeholder="your name" autocomplete="off">
-  <button id="join">Join — allow microphone</button>
+  <label for="room">room name</label>
+  <input id="room" placeholder="room name" value="general" autocomplete="off"
+         aria-label="room name" enterkeyhint="next">
+  <label for="nick">your name</label>
+  <input id="nick" placeholder="your name" autocomplete="off"
+         aria-label="your name" enterkeyhint="go">
+  <button id="join" type="button">Join — allow microphone</button>
   <p style="margin:14px 0 0;font-size:12px">
      Turn the volume up. It only works out loud.<br>
      Most adults can't hear 19 kHz — but children and dogs can, and it is not silent.
   </p>
-  <div id="gateerr" class="err"></div>
-  <p id="offready" style="margin-top:16px;font-size:11px;color:var(--dim)"></p>
+  <p style="margin:8px 0 0;font-size:11px;color:var(--dim)">
+     The microphone is only captured while this window is focused. Switch away and capture
+     pauses; nothing is recorded or sent while you're not here.</p>
+  <div id="gateerr" class="err" role="alert" aria-live="assertive"></div>
+  <p id="offready" style="margin-top:16px;font-size:11px;color:var(--dim)" aria-live="polite"></p>
   <p style="margin-top:10px;font-size:11px">
     <a href="https://github.com/bhaveshbakshi633/sound" style="color:var(--dim)">source &amp; benchmarks</a>
   </p>
 </div>
 
 <header hidden id="hdr">
-  <span class="dot" id="dot"></span>
+  <span class="dot" id="dot" aria-hidden="true"></span>
   <h1 id="roomname">—</h1>
   <span class="spec" id="spec">18250–20000 Hz · 8-FSK</span>
-  <span id="status">starting…</span>
+  <span class="tools">
+    <button class="tool" id="export" type="button" aria-label="Export activity log" title="Export activity log">↓ export</button>
+    <button class="tool" id="clear"  type="button" aria-label="Clear activity log"  title="Clear activity log">clear</button>
+  </span>
+  <span id="status" role="status" aria-live="polite">starting…</span>
 </header>
 
-<div id="log" hidden></div>
+<div id="log" hidden role="log" aria-live="polite" aria-label="messages"></div>
 
 <footer hidden id="foot">
   <form id="f">
-    <input id="i" autocomplete="off" maxlength="150" placeholder="message…">
+    <input id="i" autocomplete="off" maxlength="150" placeholder="message…"
+           aria-label="message to send" enterkeyhint="send">
     <button id="b" type="submit">Send</button>
   </form>
-  <div id="meter"><div id="meterfill"></div></div>
+  <div id="meter" aria-hidden="true"><div id="meterfill"></div></div>
   <div class="hint" id="hint">turn the volume up — this only works out loud</div>
 </footer>
 
@@ -128,6 +165,7 @@ const FS = 48000;
 
 let M = null, ctx = null, room = '', nick = '', myId = 0;
 let busyFloor = 0, busyNow = 0, txBusy = false;
+let track = null, worklet = null, capturing = true;
 
 // Transmit amplitude. LOUDER IS WORSE, and this is not a guess: on the reference machine a
 // capture peak near 0.89 decodes and a peak pinned at 1.00 fails outright, because the
@@ -191,23 +229,95 @@ function pop() {
   return bytes;
 }
 
-// ── UI ──────────────────────────────────────────────────────────────────────
+// ── activity log: persisted per room ─────────────────────────────────────────
+// Every message this device sends or hears is recorded with a timestamp and survives a
+// reload, because the whole exchange is otherwise ephemeral: there is no server holding a
+// copy, so if this page doesn't remember it, nothing does. Stored per room name in
+// localStorage, capped so it can't grow without bound, and exportable as a plain-text
+// transcript. System notices (noise floor, warnings) are shown but NOT persisted — the log
+// is the conversation, not the diagnostics.
+const HIST_CAP = 500;
+let hist = [];            // [{id, t, k:'me'|'them'|'sys', nick, text, meta, lost}]
+let eid = 0, saveTimer = 0;
+const histKey = () => 'uchat.hist.' + room;
+
+function loadHist() { try { return JSON.parse(localStorage.getItem(histKey()) || '[]'); } catch { return []; } }
+function writeHist() {
+  if (!room) return;
+  try { localStorage.setItem(histKey(), JSON.stringify(
+    hist.slice(-HIST_CAP).map(e => ({ id:e.id, t:e.t, k:e.k, nick:e.nick, text:e.text, meta:e.meta, lost:e.lost }))
+  )); } catch { /* private mode / quota — the app still works, just won't remember */ }
+}
+// Debounced during normal use so a burst of messages doesn't thrash localStorage; flushed
+// SYNCHRONOUSLY when the page is hidden or unloaded, so a message sent and then immediately
+// closed/reloaded is not lost to a pending 200 ms timer.
+function saveHist() { clearTimeout(saveTimer); saveTimer = setTimeout(writeHist, 200); }
+function flushHist() { clearTimeout(saveTimer); writeHist(); }
+window.addEventListener('pagehide', flushHist);
+function timeStr(t) { try { return new Date(t).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }); } catch { return ''; } }
+function metaLine(e) {
+  if (e.k === 'sys') return e.meta || '';
+  const p = []; if (e.meta) p.push(e.meta); p.push(timeStr(e.t)); return p.join(' · ');
+}
+
 function atBottom() { const l = $('log'); return l.scrollHeight - l.scrollTop - l.clientHeight < 80; }
-function row(cls, text, meta) {
+function renderRow(e) {
   const stick = atBottom();
-  const r = document.createElement('div'); r.className = 'row ' + cls;
-  const b = document.createElement('div'); b.className = 'bub'; b.textContent = text;
+  const r = document.createElement('div'); r.className = 'row ' + e.k + (e.lost ? ' lost' : '');
+  const b = document.createElement('div'); b.className = 'bub'; b.textContent = e.text;
   r.appendChild(b);
-  if (meta) { const m = document.createElement('div'); m.className = 'meta'; m.textContent = meta; r.appendChild(m); }
+  if (e.k !== 'sys') {
+    const m = document.createElement('div'); m.className = 'meta'; m.textContent = metaLine(e);
+    r.appendChild(m); e._meta = m;
+  }
   $('log').appendChild(r);
   if (stick) $('log').scrollTop = $('log').scrollHeight;
-  return r;
+  e._el = r;
+  return e;
+}
+// Add an entry. me/them are persisted (they are the conversation); sys is transient unless
+// told otherwise.
+function addEntry(k, text, meta, opts = {}) {
+  const persist = opts.persist ?? (k === 'me' || k === 'them');
+  const e = { id: ++eid, t: opts.t ?? Date.now(), k, nick: opts.nick || '', text, meta: meta || '', lost: !!opts.lost };
+  renderRow(e);
+  if (persist) { hist.push(e); saveHist(); }
+  return e;
+}
+function updateMeta(e, meta, opts = {}) {
+  e.meta = meta;
+  if (opts.lost) { e.lost = true; e._el.classList.add('lost'); }
+  if (opts.pending === false) e._el.classList.remove('pending');
+  if (e._meta) e._meta.textContent = metaLine(e);
+  saveHist();
+}
+
+function exportHist() {
+  const lines = hist.map(e => {
+    const who = e.k === 'me' ? (nick || 'me') : e.k === 'them' ? (e.nick || 'them') : '*';
+    return `[${new Date(e.t).toISOString()}] ${who}: ${e.text}` + (e.meta ? `  (${e.meta})` : '');
+  });
+  const body = `uchat activity — #${room}\nexported ${new Date().toISOString()}\n` +
+               `${hist.length} message(s)\n\n` + lines.join('\n') + '\n';
+  const blob = new Blob([body], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `uchat-${room}-${Date.now()}.txt`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+function clearHist() {
+  if (!confirm(`Clear the saved activity for #${room}? This cannot be undone.`)) return;
+  hist = [];
+  try { localStorage.removeItem(histKey()); } catch { /* ignore */ }
+  $('log').innerHTML = '';
+  addEntry('sys', 'activity cleared', null, { persist: false });
 }
 
 // ── transmit, with carrier sense ────────────────────────────────────────────
 async function transmit(text) {
   const bytes = pack(text);
-  if (bytes.length > M._uc_max_payload()) { row('sys', 'too long for one frame'); return; }
+  if (bytes.length > M._uc_max_payload()) { addEntry('sys', 'too long for one frame', null, { persist:false }); return; }
 
   // Listen before talking. Two overlapping bursts destroy both, and RS cannot rescue
   // that — it repairs byte errors, not a collision. Back off a random amount so two
@@ -220,14 +330,13 @@ async function transmit(text) {
 
   const burst = modulate(bytes);
   for (let i = 0; i < burst.length; i++) burst[i] *= TX_GAIN;
-  const el = row('me', text, `playing ${(burst.length/FS).toFixed(2)}s…`);
-  el.classList.add('pending');
-  inflight.set(text, { el, at: performance.now() });
+  const e = addEntry('me', text, `playing ${(burst.length/FS).toFixed(2)}s…`, { nick });
+  e._el.classList.add('pending');
+  inflight.set(text, { e, at: performance.now() });
   setTimeout(() => {
     const p = inflight.get(text);
     if (!p) return;                 // already heard back
-    p.el.classList.remove('pending'); p.el.classList.add('lost');
-    p.el.querySelector('.meta').textContent = 'lost — never heard back';
+    updateMeta(p.e, 'lost — never heard back', { lost:true, pending:false });
     inflight.delete(text);
   }, (burst.length / FS) * 1000 + 2500);
 
@@ -261,7 +370,16 @@ async function join() {
       echoCancellation: false, noiseSuppression: false, autoGainControl: false,
       channelCount: 1
     }});
-    const st = stream.getAudioTracks()[0].getSettings();
+    track = stream.getAudioTracks()[0];
+    const st = track.getSettings();
+    // If the OS or another app takes the mic away (device unplugged, permission revoked),
+    // say so plainly instead of going silently deaf.
+    track.onended = () => {
+      $('dot').className = 'dot dead';
+      $('status').textContent = 'microphone stopped';
+      addEntry('sys', 'the microphone stopped (device removed or permission revoked). ' +
+                      'Reload the page to reconnect.', null, { persist:false });
+    };
 
     ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: FS });
     await ctx.resume();
@@ -276,18 +394,36 @@ async function join() {
     if (M._uc_sample_rate() !== ctx.sampleRate) throw new Error('DSP/audio sample-rate mismatch');
 
     const src = ctx.createMediaStreamSource(stream);
-    const proc = ctx.createScriptProcessor(2048, 1, 1);
-    proc.onaudioprocess = e => {
-      const x = e.inputBuffer.getChannelData(0);
+
+    // Capture on the AUDIO thread via an AudioWorklet, not the deprecated
+    // ScriptProcessorNode which ran on the main thread and dropped microphone frames
+    // whenever the page was busy. The worklet forwards raw samples over its port; the DSP
+    // (WASM, loaded on this thread) still does the decoding here.
+    await ctx.audioWorklet.addModule('capture-worklet.js');
+    worklet = new AudioWorkletNode(ctx, 'capture', {
+      numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1]
+    });
+    worklet.port.onmessage = ev => {
+      const x = ev.data;                 // Float32Array, transferred from the audio thread
       push(x);
       let b; while ((b = pop()) !== null) onFrame(b);
     };
-    src.connect(proc);
-    // ScriptProcessor only runs while connected to a destination. Route it through a
-    // muted gain node: connecting it straight to ctx.destination would loop the
-    // microphone back out of the speaker.
+    src.connect(worklet);
+    // A worklet is only pulled while its output is in the graph. Route it through a muted
+    // gain node: connecting it straight to ctx.destination would loop the microphone back
+    // out of the speaker.
     const mute = ctx.createGain(); mute.gain.value = 0;
-    proc.connect(mute); mute.connect(ctx.destination);
+    worklet.connect(mute); mute.connect(ctx.destination);
+
+    // Restore this room's saved conversation before going live.
+    hist = loadHist();
+    if (hist.length) {
+      for (const e of hist) { e.id = ++eid; renderRow(e); }
+      const d = document.createElement('div'); d.className = 'divider';
+      d.textContent = `— ${hist.length} earlier message(s) · live below —`;
+      $('log').appendChild(d);
+      $('log').scrollTop = $('log').scrollHeight;
+    }
 
     $('gate').hidden = true;
     for (const id of ['hdr','log','foot']) $(id).hidden = false;
@@ -298,12 +434,16 @@ async function join() {
 
     const honoured = st.echoCancellation === false && st.autoGainControl === false &&
                      st.noiseSuppression === false;
-    row('sys', `joined #${room} as ${nick}`);
-    if (!honoured) row('sys',
+    addEntry('sys', `joined #${room} as ${nick}`, null, { persist:false });
+    if (!honoured) addEntry('sys',
       `WARNING: this browser kept its own audio processing on (AEC=${st.echoCancellation}, ` +
       `AGC=${st.autoGainControl}, NS=${st.noiseSuppression}). Echo cancellation removes your ` +
-      `own speaker output from the mic, which is exactly the signal. Reception may fail.`);
+      `own speaker output from the mic, which is exactly the signal. Reception may fail.`,
+      null, { persist:false });
 
+    // Honour the focus gate immediately: if the page was opened in a background tab, don't
+    // start capturing until it is actually looked at.
+    setCapture(activeNow());
     calibrate();
     $('i').focus();
   } catch (e) {
@@ -323,14 +463,23 @@ function calibrate() {
       clearInterval(t);
       seen.sort((a,b) => a-b);
       busyFloor = Math.max(seen[Math.floor(seen.length/2)], 1e-7);
-      row('sys', `in-band noise floor: ${busyFloor.toExponential(2)} — ` +
-                 `carrier sense trips above ${(busyFloor*4).toExponential(2)}`);
+      addEntry('sys', `in-band noise floor: ${busyFloor.toExponential(2)} — ` +
+                 `carrier sense trips above ${(busyFloor*4).toExponential(2)}`, null, { persist:false });
       tick();
     }
   }, 40);
 }
 
 function tick() {
+  // Paused (window not focused): the mic is muted at the source, so there is nothing to
+  // meter. Say so and keep the loop alive so it resumes instantly on refocus.
+  if (!capturing) {
+    $('dot').className = 'dot paused';
+    $('status').textContent = 'mic paused — window not focused';
+    $('meterfill').style.width = '0%';
+    requestAnimationFrame(tick);
+    return;
+  }
   busyNow = M._uc_band_energy();
   const rel = Math.min(1, busyNow / (busyFloor * 8));
   $('meterfill').style.width = (rel * 100).toFixed(0) + '%';
@@ -353,15 +502,39 @@ function onFrame(bytes) {
   if (f.id === myId) {                        // our own burst, heard back
     const p = inflight.get(f.text);
     if (p) {
-      p.el.classList.remove('pending');
-      p.el.querySelector('.meta').textContent =
-        `heard back · ${Math.round(performance.now() - p.at)} ms · purity ${M._uc_last_score().toFixed(2)}`;
+      updateMeta(p.e, `heard back · ${Math.round(performance.now() - p.at)} ms · ` +
+                      `purity ${M._uc_last_score().toFixed(2)}`, { pending:false });
       inflight.delete(f.text);
     }
     return;
   }
-  row('them', f.text, `${f.nick} · over air · purity ${M._uc_last_score().toFixed(2)}`);
+  addEntry('them', f.text, `${f.nick} · over air · purity ${M._uc_last_score().toFixed(2)}`, { nick: f.nick });
 }
+
+// ── mic focus gate ────────────────────────────────────────────────────────────
+// Capture the microphone ONLY while this window is focused and visible. Switch tabs,
+// minimise, or click another window and capture stops at the source: the track is disabled
+// AND the worklet is told to stop forwarding, so no audio leaves the audio thread. This is
+// a privacy default, not an optimisation — a page that can hear the room should not keep
+// listening once you've looked away. The AudioContext is left running so an in-flight
+// transmission still plays out; only the input is gated.
+function activeNow() { return document.visibilityState === 'visible' && document.hasFocus(); }
+function setCapture(on) {
+  if (!M || !ctx) return;                     // not joined yet — nothing to gate
+  capturing = on;
+  if (track) track.enabled = on;
+  if (worklet) worklet.port.postMessage({ type:'capture', on });
+  if (on && ctx.state === 'suspended') ctx.resume();
+  if (!on) {
+    $('dot').className = 'dot paused';
+    $('status').textContent = 'mic paused — window not focused';
+    $('meterfill').style.width = '0%';
+    flushHist();                              // persist now — the user may be leaving
+  }
+}
+document.addEventListener('visibilitychange', () => setCapture(activeNow()));
+window.addEventListener('focus', () => setCapture(activeNow()));
+window.addEventListener('blur',  () => setCapture(activeNow()));
 
 // Cache everything on first load so the network is never needed again. This is not an
 // optimisation: once the page is here, air is the only transport, and the app should keep
@@ -383,6 +556,9 @@ if ('serviceWorker' in navigator) {
 
 $('join').onclick = join;
 $('nick').onkeydown = e => { if (e.key === 'Enter') join(); };
+$('room').onkeydown = e => { if (e.key === 'Enter') $('nick').focus(); };
+$('export').onclick = exportHist;
+$('clear').onclick  = clearHist;
 $('f').onsubmit = e => { e.preventDefault(); const t = $('i').value.trim(); if (!t) return; $('i').value = ''; transmit(t); };
 </script>
 </body>

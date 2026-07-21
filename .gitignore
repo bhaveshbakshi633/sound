@@ -17,3 +17,8 @@ web/uchat.wasm
 # Scratch
 *.wav
 *.f32
+
+# Node test tooling
+node_modules/
+package-lock.json
+test-results/
