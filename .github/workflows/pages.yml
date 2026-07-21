@@ -67,6 +67,10 @@ jobs:
         run: |
           mkdir -p _site
           cp web/mesh.html _site/index.html
+          # sw.js caches ./mesh.html and ./capture-worklet.js by those names; if either
+          # 404s, addModule() throws on load and the SW install fails outright.
+          cp web/mesh.html _site/mesh.html
+          cp web/capture-worklet.js _site/
           cp web/uchat.js web/uchat.wasm _site/
           cp web/sw.js web/manifest.json web/icon.svg _site/
           cp README.md BENCHMARKS.md _site/
