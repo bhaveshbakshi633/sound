@@ -1,5 +1,9 @@
 # uchat
 
+<p align="center">
+  <img src="assets/demo.gif" alt="uchat demo — typing a message that travels as near-ultrasonic sound and decodes back on the same page" width="360">
+</p>
+
 Near-ultrasonic acoustic chat on a single Ubuntu 24.04 laptop.
 
 Type a message into a browser chat box at `http://127.0.0.1:8080`. A C++ binary modulates it
